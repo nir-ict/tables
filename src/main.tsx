@@ -12,6 +12,15 @@ import {
 } from "@tanstack/react-table";
 import { makeData, Person } from "./makeData";
 import { useDrag, useDrop } from "react-dnd";
+import { styled } from "@mui/material/styles";
+import {
+  Paper,
+  TableCell,
+  TableContainer,
+  Table as MuiTable,
+  TableHead,
+  TableRow,
+} from "@mui/material";
 
 const defaultColumns: ColumnDef<Person>[] = [
   {
@@ -125,6 +134,22 @@ function MyTable() {
     debugColumns: true,
   });
 
+  const StyledTableCell = styled(TableCell)(({ theme }) => ({
+    "&:first-child": {
+      paddingRight: theme.spacing(3),
+    },
+  }));
+
+  const StyledTableRow = styled(TableRow)(({ theme }) => ({
+    "&:nth-of-type(odd)": {
+      backgroundColor: theme.palette.action.hover,
+    },
+    // hide last border
+    "&:last-child td, &:last-child th": {
+      border: 0,
+    },
+  }));
+
   return (
     <div className="p-2">
       <div className="h-4" />
@@ -134,81 +159,84 @@ function MyTable() {
         </button>
       </div>
       <div className="h-4" />
-      <table
-        {...{
-          style: {
-            width: table.getCenterTotalSize(),
-          },
-        }}
-      >
-        <thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              <th />
-              {headerGroup.headers.map((header) => (
-                <th
-                  {...{
-                    key: header.id,
-                    colSpan: header.colSpan,
-                    style: {
-                      width: header.getSize(),
-                    },
-                  }}
-                >
-                  <div style={{ position: "relative" }}>
+      <TableContainer component={Paper}>
+        <MuiTable
+          {...{
+            style: {
+              width: table.getCenterTotalSize(),
+            },
+          }}
+        >
+          <TableHead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <StyledTableRow key={headerGroup.id}>
+                <TableCell />
+                {headerGroup.headers.map((header) => (
+                  <StyledTableCell
+                    {...{
+                      key: header.id,
+                      colSpan: header.colSpan,
+                      style: {
+                        width: header.getSize(),
+                      },
+                    }}
+                  >
+                    <div style={{ position: "relative" }}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                      <div
+                        {...{
+                          onMouseDown: header.getResizeHandler(),
+                          onTouchStart: header.getResizeHandler(),
+                          className: `resizer ${
+                            header.column.getIsResizing() ? "isResizing" : ""
+                          }`,
+                          style: {
+                            transform:
+                              columnResizeMode === "onEnd" &&
+                              header.column.getIsResizing()
+                                ? `translateX(${
+                                    table.getState().columnSizingInfo
+                                      .deltaOffset
+                                  }px)`
+                                : "",
+                          },
+                        }}
+                      ></div>
+                    </div>
+                  </StyledTableCell>
+                ))}
+              </StyledTableRow>
+            ))}
+          </TableHead>
+
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <DraggableRow key={row.id} row={row} reorderRow={reorderRow} />
+            ))}
+          </tbody>
+          <tfoot>
+            {table.getFooterGroups().map((footerGroup) => (
+              <tr key={footerGroup.id}>
+                {footerGroup.headers.map((header) => (
+                  <th key={header.id} colSpan={header.colSpan}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
+                          header.column.columnDef.footer,
                           header.getContext()
                         )}
-                    <div
-                      {...{
-                        onMouseDown: header.getResizeHandler(),
-                        onTouchStart: header.getResizeHandler(),
-                        className: `resizer ${
-                          header.column.getIsResizing() ? "isResizing" : ""
-                        }`,
-                        style: {
-                          transform:
-                            columnResizeMode === "onEnd" &&
-                            header.column.getIsResizing()
-                              ? `translateX(${
-                                  table.getState().columnSizingInfo.deltaOffset
-                                }px)`
-                              : "",
-                        },
-                      }}
-                    ></div>
-                  </div>
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <DraggableRow key={row.id} row={row} reorderRow={reorderRow} />
-          ))}
-        </tbody>
-        <tfoot>
-          {table.getFooterGroups().map((footerGroup) => (
-            <tr key={footerGroup.id}>
-              {footerGroup.headers.map((header) => (
-                <th key={header.id} colSpan={header.colSpan}>
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.footer,
-                        header.getContext()
-                      )}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </tfoot>
-      </table>
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </tfoot>
+        </MuiTable>
+      </TableContainer>
       <pre>{JSON.stringify(data, null, 2)}</pre>
     </div>
   );
