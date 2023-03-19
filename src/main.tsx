@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useState, HTMLProps, useRef, useEffect } from "react";
 
 import "./index.css";
 
@@ -9,6 +9,8 @@ import {
   getCoreRowModel,
   useReactTable,
   ColumnResizeMode,
+  ExpandedState,
+  getExpandedRowModel,
 } from "@tanstack/react-table";
 import { makeData, Person } from "./makeData";
 import { useDrag, useDrop } from "react-dnd";
@@ -24,53 +26,89 @@ import {
 
 const defaultColumns: ColumnDef<Person>[] = [
   {
-    header: "Name",
+    accessorKey: "firstName",
+    header: ({ table }) => (
+      <>
+        <IndeterminateCheckbox
+          {...{
+            checked: table.getIsAllRowsSelected(),
+            indeterminate: table.getIsSomeRowsSelected(),
+            onChange: table.getToggleAllRowsSelectedHandler(),
+          }}
+        />
+        <button
+          {...{
+            onClick: table.getToggleAllRowsExpandedHandler(),
+          }}
+        >
+          {table.getIsAllRowsExpanded() ? "👇" : "👉"}
+        </button>
+        First Name
+      </>
+    ),
+    cell: ({ row, getValue }) => (
+      <div
+        style={{
+          // Since rows are flattened by default,
+          // we can use the row.depth property
+          // and paddingLeft to visually indicate the depth
+          // of the row
+          paddingLeft: `${row.depth * 2}rem`,
+        }}
+      >
+        <>
+          <IndeterminateCheckbox
+            {...{
+              checked: row.getIsSelected(),
+              indeterminate: row.getIsSomeSelected(),
+              onChange: row.getToggleSelectedHandler(),
+            }}
+          />
+          {row.getCanExpand() ? (
+            <button
+              {...{
+                onClick: row.getToggleExpandedHandler(),
+                style: { cursor: "pointer" },
+              }}
+            >
+              {row.getIsExpanded() ? "👇" : "👉"}
+            </button>
+          ) : (
+            "🔵"
+          )}{" "}
+          {getValue()}
+        </>
+      </div>
+    ),
     footer: (props) => props.column.id,
-    columns: [
-      {
-        accessorKey: "firstName",
-        cell: (info) => info.getValue(),
-        footer: (props) => props.column.id,
-      },
-      {
-        accessorFn: (row) => row.lastName,
-        id: "lastName",
-        cell: (info) => info.getValue(),
-        header: () => <span>Last Name</span>,
-        footer: (props) => props.column.id,
-      },
-    ],
   },
   {
-    header: "Info",
+    accessorFn: (row) => row.lastName,
+    id: "lastName",
+    cell: (info) => info.getValue(),
+    header: () => <span>Last Name</span>,
     footer: (props) => props.column.id,
-    columns: [
-      {
-        accessorKey: "age",
-        header: () => "Age",
-        footer: (props) => props.column.id,
-      },
-      {
-        header: "More Info",
-        columns: [
-          {
-            accessorKey: "visits",
-            header: () => <span>Visits</span>,
-            footer: (props) => props.column.id,
-          },
-          {
-            accessorKey: "status",
-            header: "Status",
-            footer: (props) => props.column.id,
-          },
-          {
-            accessorKey: "progress",
-            header: "Profile Progress",
-            footer: (props) => props.column.id,
-          },
-        ],
-      },
-    ],
+  },
+
+  {
+    accessorKey: "age",
+    header: () => "Age",
+    footer: (props) => props.column.id,
+  },
+  {
+    accessorKey: "visits",
+    header: () => <span>Visits</span>,
+    footer: (props) => props.column.id,
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    footer: (props) => props.column.id,
+  },
+  {
+    accessorKey: "progress",
+    header: "Profile Progress",
+    footer: (props) => props.column.id,
   },
 ];
 
@@ -107,11 +145,14 @@ const DraggableRow: FC<{
 
 function MyTable() {
   const [columns] = useState(() => [...defaultColumns]);
-  const [data, setData] = useState(() => makeData(20));
+  // const [data, setData] = useState(() => makeData(20));
+
+  const [data, setData] = useState(() => makeData(100, 5));
 
   const [columnResizeMode, setColumnResizeMode] =
     useState<ColumnResizeMode>("onChange");
-  console.log(columnResizeMode);
+
+  const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const reorderRow = (draggedRowIndex: number, targetRowIndex: number) => {
     data.splice(
@@ -127,8 +168,15 @@ function MyTable() {
   const table = useReactTable({
     data,
     columns,
+    state: {
+      expanded,
+    },
+    onExpandedChange: setExpanded,
+    getSubRows: (row) => row.subRows,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.userId,
+    getExpandedRowModel: getExpandedRowModel(),
+
+    // getRowId: (row) => row.userId,
     debugTable: true,
     debugHeaders: true,
     debugColumns: true,
@@ -239,6 +287,29 @@ function MyTable() {
       </TableContainer>
       <pre>{JSON.stringify(data, null, 2)}</pre>
     </div>
+  );
+}
+
+function IndeterminateCheckbox({
+  indeterminate,
+  className = "",
+  ...rest
+}: { indeterminate?: boolean } & HTMLProps<HTMLInputElement>) {
+  const ref = useRef<HTMLInputElement>(null!);
+
+  useEffect(() => {
+    if (typeof indeterminate === "boolean") {
+      ref.current.indeterminate = !rest.checked && indeterminate;
+    }
+  }, [ref, indeterminate]);
+
+  return (
+    <input
+      type="checkbox"
+      ref={ref}
+      className={className + " cursor-pointer"}
+      {...rest}
+    />
   );
 }
 
